@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Whistle Counter with Sound Notification</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+    }
+    #whistleCount {
+      font-size: 36px;
+      margin-top: 20px;
+    }
+    #loudnessIndicator {
+      font-size: 24px;
+      margin-top: 20px;
+    }
+    #stopBeep {
+      display: none; /* Hide the button by default */
+    }
+  </style>
+</head>
+<body>
+<h1>Cooker Whistle Counter</h1>
+Number of whistles: <input type="number" id="whistleGoal" min="1" value="1">
+<div id="whistleCount">0</div>
+<button id="stopBeep">Stop Beep</button>
+
+<script>
+  let whistleCounter = 0;
+  let isPreviouslyLoud = false; // Variable to track previous state of loudness
+  let whistleGoal = 1; // Default whistle goal
+  let beepAudio; // Variable to hold reference to the audio element
+
+  // Function to update the display with the current whistle count
+  function updateWhistleCount() {
+    document.getElementById('whistleCount').textContent = whistleCounter;
+    if (whistleCounter >= whistleGoal) {
+      playNotificationSound();
+    }
+  }
+
+  // Function to play the notification sound
+  function playNotificationSound() {
+    // Play a notification sound here
+    // For simplicity, this example plays a beep sound
+    beepAudio = new Audio('beep.mp3'); // Provide the path to your sound file
+    beepAudio.loop = true; // Loop the sound until stopped
+    beepAudio.play();
+    document.getElementById('stopBeep').style.display = 'inline'; // Show the "Stop Beep" button
+  }
+
+  // Function to stop the notification sound
+  function stopNotificationSound() {
+    if (beepAudio) {
+      beepAudio.pause();
+      document.getElementById('stopBeep').style.display = 'none'; // Hide the "Stop Beep" button
+    }
+  }
+
+  // Function to update the loudness indicator
+  function updateLoudnessIndicator(isLoud) {
+    if (isLoud && !isPreviouslyLoud) { // Check if a new loud sound is detected
+      whistleCounter++;
+      updateWhistleCount();
+    }
+    isPreviouslyLoud = isLoud; // Update previous state of loudness
+  }
+
+  // Access the user's microphone and start recording
+  navigator.mediaDevices.getUserMedia({ audio: true })
+    .then(stream => {
+      const audioContext = new AudioContext();
+      const source = audioContext.createMediaStreamSource(stream);
+      const analyser = audioContext.createAnalyser();
+      analyser.fftSize = 2048; // Set the FFT size (frequency resolution)
+      source.connect(analyser);
+
+      // Set up a loop to continuously analyze the audio input
+      const bufferLength = analyser.frequencyBinCount;
+      const dataArray = new Uint8Array(bufferLength);
+      const threshold = 100; // Adjust this threshold based on your requirements
+      const updateInterval = 1000; // Update interval in milliseconds
+      setInterval(() => {
+        analyser.getByteFrequencyData(dataArray);
+        const maxFrequency = Math.max(...dataArray);
+        const isLoud = maxFrequency > threshold;
+        updateLoudnessIndicator(isLoud);
+      }, updateInterval);
+    })
+    .catch(err => {
+      console.error('Error accessing microphone:', err);
+      alert('Error accessing microphone. Please allow microphone access.');
+    });
+
+  // Function to handle change in whistle goal input
+  document.getElementById('whistleGoal').addEventListener('change', function() {
+    whistleGoal = parseInt(this.value);
+    updateWhistleCount();
+  });
+
+  // Event listener for the "Stop Beep" button
+  document.getElementById('stopBeep').addEventListener('click', stopNotificationSound);
+</script>
+</body>
+</html>
